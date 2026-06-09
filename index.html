@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<meta name="theme-color" content="#0f1320">
+<title>Pokémon TCG Tracker</title>
+<style>
+  :root{
+    --bg:#0f1320; --surface:#171c2e; --card:#1c2336; --card2:#222b42;
+    --border:#2b3450; --border2:#3a456a; --primary:#ef4444; --indigo:#6366f1;
+    --gold:#f0b429; --text:#e8eaf2; --muted:#8b93a8; --faint:#5b647d; --green:#4ade80;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px}
+  #root{max-width:1180px;margin:0 auto}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+  input{font-family:inherit}
+  input::placeholder{color:var(--faint)}
+  a{color:inherit}
+  button{font-family:inherit;touch-action:manipulation}
+
+  .header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:50;flex-wrap:wrap}
+  .htitle{font-size:17px;font-weight:700;letter-spacing:-.3px}
+  .hsub{font-size:12px;color:var(--muted);margin-top:1px}
+  .backbtn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:22px;line-height:1;padding:0 4px}
+  .pill{border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;background:var(--card);color:var(--text);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .pill:hover{background:var(--card2)}
+  .pill.primary{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .syncdot{width:7px;height:7px;border-radius:50%;display:inline-block}
+
+  .body{padding:14px 16px 40px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+  .stat{background:var(--surface);border-radius:10px;padding:11px 13px}
+  .stat .l{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .stat .v{font-size:21px;font-weight:700}
+  .search{width:100%;padding:10px 13px;border-radius:9px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;outline:none}
+  .search:focus{border-color:var(--border2)}
+  .hscroll{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .hscroll::-webkit-scrollbar{display:none}
+  .chip{border:1px solid var(--border);border-radius:99px;padding:5px 13px;font-size:12px;cursor:pointer;background:var(--card);color:var(--muted);white-space:nowrap;flex-shrink:0}
+  .chip.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+
+  .setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px}
+  .setcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,transform .1s}
+  .setcard:hover{border-color:var(--border2);transform:translateY(-2px)}
+  .setcard.done{border-color:var(--green)}
+  .setlogo{height:38px;object-fit:contain;margin:0 auto}
+  .setname{font-size:12px;font-weight:600;text-align:center;line-height:1.3}
+  .setseries{font-size:10px;color:var(--faint);text-align:center}
+
+  .pbar{flex:1;height:5px;background:var(--border);border-radius:99px;overflow:hidden}
+  .pbar > div{height:100%;border-radius:99px;transition:width .4s ease}
+  .pbtxt{font-size:11px;color:var(--muted);min-width:46px;text-align:right}
+
+  .fbtn{border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;background:var(--card);color:var(--muted);white-space:nowrap}
+  .fbtn.fall{border-color:var(--border2);color:var(--text)}
+  .fbtn.fhave{background:rgba(74,222,128,.13);border-color:var(--green);color:var(--green)}
+  .fbtn.fmiss{background:rgba(239,68,68,.13);border-color:var(--primary);color:#fca5a5}
+  .sbtn{border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12px;cursor:pointer;background:var(--card);color:var(--muted);white-space:nowrap;flex-shrink:0}
+  .sbtn.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .abtn{border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12px;cursor:pointer;background:transparent;color:var(--muted);white-space:nowrap}
+  .abtn:hover{background:var(--card2)}
+
+  .cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:9px}
+  .ctile{position:relative;cursor:pointer;border-radius:7px;border:2px solid var(--border);overflow:hidden;background:var(--card);transition:border-color .15s,transform .1s}
+  .ctile:hover{border-color:var(--border2);transform:translateY(-2px)}
+  .ctile.owned{border-color:var(--gold)}
+  .ctile:not(.owned) img{opacity:.55}
+  .ctile img{width:100%;display:block}
+  .qbadge{position:absolute;top:4px;right:4px;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;z-index:2;line-height:1.4}
+  .ptag{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.82) 55%);padding:13px 4px 4px;font-size:10px;text-align:center}
+  .ptag a{color:#fcd34d;text-decoration:none;font-weight:600}
+  .pnum{color:#cbd5e1}
+
+  .empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:14px}
+  .spin{display:inline-block;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .note{font-size:11px;color:var(--faint);margin-bottom:12px;line-height:1.5}
+  .banner{background:rgba(99,102,241,.12);border:1px solid var(--border2);border-radius:10px;padding:11px 14px;font-size:13px;color:#c7d2fe;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;line-height:1.5}
+
+  @media(max-width:480px){
+    .stats{grid-template-columns:repeat(3,1fr);gap:6px}
+    .stat{padding:9px 9px}
+    .stat .v{font-size:17px}
+    .stat .l{font-size:10px}
+    .htitle{font-size:15px}
+    .cardgrid{grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:7px}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+/* ===========================================================
+   1) CONFIGURAÇÃO DO FIREBASE  ←  COLE SEUS DADOS AQUI
+   Pegue em: Firebase Console > Configurações do projeto >
+   Seus apps > SDK do Firebase > Configuração
+   =========================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDqpo3TmSt1WcFQtIO9nr31Vea8nJswmCc",
+  authDomain: "tcg-tracker-8f256.firebaseapp.com",
+  projectId: "tcg-tracker-8f256",
+  storageBucket: "tcg-tracker-8f256.firebasestorage.app",
+  messagingSenderId: "79092502365",
+  appId: "1:79092502365:web:4fa9df6fde0faac6e7e2b4"
+};
+
+/* (Opcional) Chave da API do Pokémon TCG, caso atinja limite de uso.
+   Pegue grátis em https://dev.pokemontcg.io  — deixe "" se não tiver. */
+const POKEMON_API_KEY = "";
+
+/* =========================================================== */
+
+const API = "https://api.pokemontcg.io/v2";
+const apiOpts = POKEMON_API_KEY ? { headers: { "X-Api-Key": POKEMON_API_KEY } } : {};
+
+const Q = ["NM","LP","MP","HP","DMG"];
+const QBG = {NM:"rgba(74,222,128,.9)",LP:"rgba(132,204,22,.9)",MP:"rgba(240,180,41,.9)",HP:"rgba(248,113,113,.9)",DMG:"rgba(185,28,28,.95)"};
+const QFG = {NM:"#0a2e12",LP:"#1a2e05",MP:"#3d2a02",HP:"#3d0808",DMG:"#fee"};
+const QLabel = {NM:"Near Mint",LP:"Lightly Played",MP:"Moderately Played",HP:"Heavily Played",DMG:"Danificada"};
+const RRANK = {"Common":1,"Uncommon":2,"Rare":3,"Rare Holo":4,"Double Rare":5,"Rare Holo EX":5,"Rare Holo GX":5,"Rare Holo V":5,"Rare Holo VMAX":6,"Rare Holo VSTAR":6,"Ultra Rare":7,"Rare Ultra":7,"Trainer Gallery Rare Holo":7,"Illustration Rare":8,"Rare Rainbow":8,"Shiny Rare":8,"Amazing Rare":8,"Special Illustration Rare":9,"Shiny Ultra Rare":9,"ACE SPEC Rare":9,"Hyper Rare":10,"Secret Rare":10,"Crown Rare":11};
+const SORTS = [{id:"num",label:"Nº"},{id:"name",label:"Nome"},{id:"price-d",label:"Preço ↓"},{id:"price-a",label:"Preço ↑"},{id:"rarity",label:"Raridade"},{id:"status",label:"Status"}];
+
+/* ---- Firebase init (tolerante a config vazia) ---- */
+let FB_OK=false, auth=null, db=null;
+try{
+  if(FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.includes("SUA_")){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth=firebase.auth();
+    db=firebase.firestore();
+    try{ db.enablePersistence({synchronizeTabs:true}); }catch(e){}
+    FB_OK=true;
+  }
+}catch(e){ console.warn("Firebase não inicializado:", e.message); }
+
+/* ---- localStorage (cache + modo offline) ---- */
+const LS_KEY="ptcg_cols";
+function lsGetAll(){ try{ return JSON.parse(localStorage.getItem(LS_KEY))||{}; }catch{ return {}; } }
+function lsSetAll(c){ try{ localStorage.setItem(LS_KEY, JSON.stringify(c)); }catch{} }
+
+/* ---- helpers ---- */
+function price(card){ const p=card.tcgplayer&&card.tcgplayer.prices; if(!p)return null; return (p.holofoil&&p.holofoil.market)||(p.normal&&p.normal.market)||(p.reverseHolofoil&&p.reverseHolofoil.market)||null; }
+function fmtBRL(usd,rate){ if(!usd||!rate)return null; return "R$\u00a0"+(usd*rate).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function sortCards(cards,by,owned){
+  const s=[...cards];
+  if(by==="name")return s.sort((a,b)=>a.name.localeCompare(b.name));
+  if(by==="price-d")return s.sort((a,b)=>(price(b)||0)-(price(a)||0));
+  if(by==="price-a")return s.sort((a,b)=>(price(a)||0)-(price(b)||0));
+  if(by==="rarity")return s.sort((a,b)=>(RRANK[b.rarity]||0)-(RRANK[a.rarity]||0));
+  if(by==="status")return s.sort((a,b)=>{const ao=owned[a.id]?1:0,bo=owned[b.id]?1:0;if(bo!==ao)return bo-ao;return(parseInt(a.number)||0)-(parseInt(b.number)||0);});
+  return s.sort((a,b)=>{const an=parseInt(a.number)||0,bn=parseInt(b.number)||0;return an!==bn?an-bn:a.number.localeCompare(b.number,undefined,{numeric:true});});
+}
+
+const {useState,useEffect,useRef}=React;
+const h=(t,p,...c)=>React.createElement(t,p,...c);
+const div=(p,...c)=>h("div",p,...c);
+
+function Pbar({owned,total}){
+  const pct=total>0?Math.round(owned/total*100):0;
+  const bg=pct===100?"var(--green)":pct>0?"var(--indigo)":"var(--border2)";
+  return div({style:{display:"flex",alignItems:"center",gap:7,flex:1}},
+    div({className:"pbar"}, div({style:{width:pct+"%",background:bg}})),
+    h("span",{className:"pbtxt"}, owned+"/"+total)
+  );
+}
+
+function App(){
+  const [view,setView]=useState("sets");
+  const [sets,setSets]=useState([]);
+  const [sel,setSel]=useState(null);
+  const [cards,setCards]=useState([]);
+  const [allCols,setAllCols]=useState({});
+  const [filter,setFilter]=useState("all");
+  const [cq,setCq]=useState("");
+  const [sq,setSq]=useState("");
+  const [loading,setLoading]=useState(true);
+  const [cLoading,setCLoading]=useState(false);
+  const [seriesF,setSeriesF]=useState("all");
+  const [sortBy,setSortBy]=useState("num");
+  const [rate,setRate]=useState(null);
+  const [err,setErr]=useState(null);
+  const [user,setUser]=useState(null);
+  const [authReady,setAuthReady]=useState(!FB_OK);
+  const [sync,setSync]=useState("idle");
+
+  const userRef=useRef(null);
+  const saveTimer=useRef(null);
+  useEffect(()=>{ userRef.current=user; },[user]);
+
+  /* cotação + coleções (carrega cedo) */
+  useEffect(()=>{
+    setAllCols(lsGetAll());
+    fetch("https://api.exchangerate-api.com/v4/latest/USD").then(r=>r.json()).then(d=>setRate(d.rates.BRL)).catch(()=>setRate(5.40));
+  },[]);
+
+  /* sets da API */
+  useEffect(()=>{
+    (async()=>{
+      try{
+        const r=await fetch(API+"/sets?orderBy=-releaseDate&pageSize=250",apiOpts);
+        if(!r.ok)throw new Error();
+        const{data}=await r.json();
+        setSets(data);
+      }catch{ setErr("Não consegui carregar as coleções. Recarregue a página."); }
+      setLoading(false);
+    })();
+  },[]);
+
+  /* auth + sync */
+  useEffect(()=>{
+    if(!FB_OK)return;
+    const unsub=auth.onAuthStateChanged(async u=>{
+      setUser(u); setAuthReady(true);
+      if(u){
+        setSync("loading");
+        try{
+          const snap=await db.collection("users").doc(u.uid).get();
+          const local=lsGetAll();
+          if(snap.exists && snap.data().cols){
+            const cloud=snap.data().cols;
+            setAllCols(cloud); lsSetAll(cloud); setSync("saved");
+          }else if(Object.keys(local).length){
+            await db.collection("users").doc(u.uid).set({cols:local,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+            setAllCols(local); setSync("saved");
+          }else{ setAllCols({}); setSync("saved"); }
+        }catch(e){ setSync("error"); setAllCols(lsGetAll()); }
+      }else{ setAllCols(lsGetAll()); setSync("idle"); }
+    });
+    return ()=>unsub();
+  },[]);
+
+  const persist=(cols)=>{
+    lsSetAll(cols);
+    const u=userRef.current;
+    if(FB_OK && u){
+      setSync("saving");
+      clearTimeout(saveTimer.current);
+      saveTimer.current=setTimeout(()=>{
+        db.collection("users").doc(u.uid).set({cols,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+          .then(()=>setSync("saved")).catch(()=>setSync("error"));
+      },700);
+    }
+  };
+
+  const login=async()=>{ try{ await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ alert("Erro no login: "+e.message); } };
+  const logout=()=>auth.signOut();
+
+  const openSet=async(set)=>{
+    setSel(set); setView("cards"); setCLoading(true); setFilter("all"); setCq(""); setSortBy("num");
+    window.scrollTo(0,0);
+    try{
+      const r=await fetch(API+"/cards?q=set.id:"+set.id+"&orderBy=number&pageSize=250",apiOpts);
+      const{data}=await r.json();
+      setCards(data);
+    }catch{ setCards([]); }
+    setCLoading(false);
+  };
+  const goBack=()=>{ setView("sets"); setSel(null); setCards([]); window.scrollTo(0,0); };
+
+  const owned = sel ? (allCols[sel.id]||{}) : {};
+
+  const toggleCard=(id)=>{
+    setAllCols(prev=>{
+      const sc={...(prev[sel.id]||{})};
+      if(sc[id])delete sc[id]; else sc[id]="NM";
+      const next={...prev,[sel.id]:sc};
+      persist(next); return next;
+    });
+  };
+  const cycleQ=(e,id)=>{
+    e.stopPropagation();
+    setAllCols(prev=>{
+      const sc={...(prev[sel.id]||{})};
+      const i=Q.indexOf(sc[id]);
+      if(i>=Q.length-1)delete sc[id]; else sc[id]=Q[i+1];
+      const next={...prev,[sel.id]:sc};
+      persist(next); return next;
+    });
+  };
+  const markAll=()=>{ setAllCols(prev=>{ const next={...prev,[sel.id]:Object.fromEntries(cards.map(c=>[c.id,"NM"]))}; persist(next); return next; }); };
+  const clearAll=()=>{ setAllCols(prev=>{ const next={...prev,[sel.id]:{}}; persist(next); return next; }); };
+
+  const seriesList=["all",...new Set(sets.map(s=>s.series))];
+  const vSets=sets.filter(s=>{ const q=sq.toLowerCase(); return(!q||s.name.toLowerCase().includes(q)||s.series.toLowerCase().includes(q))&&(seriesF==="all"||s.series===seriesF); });
+  const vCards=sortCards(cards.filter(c=>{ const q=cq.toLowerCase(); const mQ=!q||c.name.toLowerCase().includes(q)||c.number.includes(q); const mF=filter==="all"||(filter==="have"&&owned[c.id])||(filter==="missing"&&!owned[c.id]); return mQ&&mF; }),sortBy,owned);
+
+  const progFor=(s)=>({owned:Object.keys(allCols[s.id]||{}).length,total:s.printedTotal||s.total});
+  const totalOwned=Object.values(allCols).reduce((a,c)=>a+Object.keys(c).length,0);
+  const complete=sets.filter(s=>{const p=progFor(s);return p.total>0&&p.owned>=p.total;}).length;
+  const curP=sel?progFor(sel):null;
+  const colValue=cards.reduce((s,c)=>owned[c.id]?s+(price(c)||0):s,0);
+
+  const syncInfo=()=>{
+    if(!FB_OK)return null;
+    const map={loading:["#f0b429","Carregando..."],saving:["#f0b429","Salvando..."],saved:["#4ade80","Sincronizado"],error:["#ef4444","Erro ao salvar"],idle:["#5b647d",""]};
+    const[col,txt]=map[sync]||map.idle;
+    if(!user)return null;
+    return div({style:{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--muted)"}},
+      h("span",{className:"syncdot",style:{background:col}}), txt
+    );
+  };
+
+  if(loading)return div({style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"70vh",gap:14,color:"var(--muted)"}},
+    h("span",{className:"spin",style:{fontSize:26}},"◌"),"Carregando coleções Pokémon TCG..."
+  );
+  if(err)return div({style:{padding:50,textAlign:"center",color:"#fca5a5"}},err);
+
+  return div(null,
+    /* HEADER */
+    div({className:"header"},
+      view==="cards"&&h("button",{className:"backbtn",onClick:goBack},"←"),
+      div({style:{flex:1,minWidth:140}},
+        div({className:"htitle"}, view==="sets"?"Pokémon TCG Tracker":(sel&&sel.name||"")),
+        div({className:"hsub"}, view==="sets"?(totalOwned.toLocaleString("pt-BR")+" cartas · "+complete+" completas"):((sel&&sel.series||"")+" · "+(sel&&sel.releaseDate||"")))
+      ),
+      syncInfo(),
+      view==="cards"&&div({style:{display:"flex",gap:6}},
+        h("button",{className:"abtn",onClick:markAll},"✓ Todas"),
+        h("button",{className:"abtn",onClick:clearAll},"Limpar")
+      ),
+      FB_OK&&authReady&&(user
+        ? h("button",{className:"pill",onClick:logout,title:user.email||""}, (user.displayName||"Sair").split(" ")[0]+" · Sair")
+        : h("button",{className:"pill primary",onClick:login},"Entrar com Google")
+      )
+    ),
+
+    div({className:"body"},
+
+      /* aviso de config / sync */
+      view==="sets"&&!FB_OK&&div({className:"banner"},
+        "⚠️ Sincronização desligada — preencha o FIREBASE_CONFIG no arquivo para salvar na nuvem e usar no PC + celular. Por enquanto os dados ficam só neste navegador."
+      ),
+      view==="sets"&&FB_OK&&!user&&div({className:"banner"},
+        "Entre com sua conta Google para sincronizar sua coleção entre o PC e o celular.",
+        h("button",{className:"pill primary",onClick:login,style:{marginLeft:"auto"}},"Entrar")
+      ),
+
+      view==="sets"&&div(null,
+        div({className:"stats"},
+          ...[["Cartas coletadas",totalOwned.toLocaleString("pt-BR")],["Coleções completas",complete],["Coleções disponíveis",sets.length]]
+            .map(([l,v],i)=>div({key:i,className:"stat"},div({className:"l"},l),div({className:"v"},v)))
+        ),
+        h("input",{className:"search",value:sq,onChange:e=>setSq(e.target.value),placeholder:"Buscar coleção...",style:{marginBottom:11}}),
+        div({className:"hscroll",style:{marginBottom:14}},
+          ...seriesList.map(s=>h("button",{key:s,className:"chip"+(seriesF===s?" on":""),onClick:()=>setSeriesF(s)},s==="all"?"Todas":s))
+        ),
+        vSets.length===0
+          ? div({className:"empty"},"Nenhuma coleção encontrada.")
+          : div({className:"setgrid"},
+              ...vSets.map(set=>{
+                const p=progFor(set); const pct=p.total?Math.round(p.owned/p.total*100):0;
+                return div({key:set.id,className:"setcard"+(pct===100?" done":""),onClick:()=>openSet(set)},
+                  set.images&&set.images.logo
+                    ? h("img",{className:"setlogo",src:set.images.logo,alt:set.name})
+                    : div({className:"setname",style:{height:38,display:"flex",alignItems:"center",justifyContent:"center"}},set.name),
+                  div({className:"setname"},set.name),
+                  div({className:"setseries"},set.series),
+                  div({style:{display:"flex"}}, h(Pbar,{owned:p.owned,total:p.total}))
+                );
+              })
+            )
+      ),
+
+      view==="cards"&&sel&&div(null,
+        div({style:{display:"flex",alignItems:"center",gap:14,marginBottom:8,flexWrap:"wrap"}},
+          div({style:{display:"flex",flex:1,minWidth:180}}, h(Pbar,{owned:curP.owned,total:curP.total})),
+          rate&&colValue>0&&div({style:{fontSize:13,color:"var(--text)",fontWeight:600,whiteSpace:"nowrap"}},"Valor: "+fmtBRL(colValue,rate))
+        ),
+        div({className:"note"},
+          rate
+            ? "Preços do TCGPlayer (mercado USD → BRL a "+rate.toFixed(2)+"). Toque no preço para abrir a carta na Liga Pokémon."
+            : "Buscando cotação do dólar..."
+        ),
+        div({style:{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap",alignItems:"center"}},
+          ...[["all","Todas","fall"],["have","✓ Tenho","fhave"],["missing","✗ Faltam","fmiss"]].map(([f,label,cls])=>{
+            const cnt=f==="all"?cards.length:f==="have"?Object.keys(owned).length:cards.length-Object.keys(owned).length;
+            return h("button",{key:f,className:"fbtn"+(filter===f?" "+cls:""),onClick:()=>setFilter(f)},label+" ("+cnt+")");
+          }),
+          h("input",{className:"search",value:cq,onChange:e=>setCq(e.target.value),placeholder:"Buscar carta...",style:{flex:1,minWidth:120,padding:"7px 11px"}})
+        ),
+        div({className:"hscroll",style:{marginBottom:13,alignItems:"center"}},
+          h("span",{style:{fontSize:11,color:"var(--muted)",paddingRight:4,flexShrink:0}},"Ordenar:"),
+          ...SORTS.map(s=>h("button",{key:s.id,className:"sbtn"+(sortBy===s.id?" on":""),onClick:()=>setSortBy(s.id)},s.label))
+        ),
+        cLoading
+          ? div({className:"empty"}, h("span",{className:"spin",style:{fontSize:24,display:"block",marginBottom:10}},"◌"),"Carregando cartas...")
+          : vCards.length===0
+            ? div({className:"empty"},"Nenhuma carta encontrada.")
+            : div({className:"cardgrid"},
+                ...vCards.map(card=>{
+                  const isOwned=!!owned[card.id]; const q=owned[card.id];
+                  const brl=fmtBRL(price(card),rate);
+                  const liga="https://www.ligapokemon.com.br/?view=cards/search&card="+encodeURIComponent(card.name);
+                  return div({key:card.id,className:"ctile"+(isOwned?" owned":""),onClick:()=>toggleCard(card.id)},
+                    card.images&&card.images.small
+                      ? h("img",{src:card.images.small,alt:card.name,loading:"lazy"})
+                      : div({style:{aspectRatio:"2.5/3.5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"var(--faint)",padding:4,textAlign:"center"}},card.name),
+                    isOwned&&h("span",{className:"qbadge",style:{background:QBG[q],color:QFG[q]},title:"Qualidade: "+QLabel[q]+" — toque para mudar",onClick:e=>cycleQ(e,card.id)},q),
+                    div({className:"ptag"},
+                      brl
+                        ? h("a",{href:liga,target:"_blank",rel:"noopener",onClick:e=>e.stopPropagation()},brl)
+                        : h("span",{className:"pnum"},"#"+card.number)
+                    )
+                  );
+                })
+              )
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
